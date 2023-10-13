@@ -42,7 +42,7 @@ class Command(BaseCommand):
 
         habit_list = [
             {"owner": superuser, "location": "Moscow", "action": "Python", "action_time": timezone.now(),
-             "timing": "daily"},
+             "timing": "daily", "is_publish": True},
             {"owner": manager, "location": "Moscow", "action": "Python", "action_time": timezone.now(),
              "timing": "daily"},
             {"owner": user1, "location": "Moscow", "action": "Python", "action_time": timezone.now(), "timing": "daily"}

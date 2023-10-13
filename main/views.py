@@ -14,18 +14,31 @@ from .serializers import HabitSerializer
 class HabitViewSet(viewsets.ModelViewSet):
     """ViewSet для работы с моделью."""
     serializer_class = HabitSerializer
-    queryset = Habit.objects.all()
+    # queryset = Habit.objects.all()
+    queryset = Habit.objects.order_by('id')
     pagination_class = MyPagination
     permission_classes = [IsAuthenticated, IsOwnerOrStaff]
+
+    def create(self, request, *args, **kwargs):
+        owner = request.user
+        habit_data = request.data
+        habit_data['owner'] = owner.id
+        serializer = HabitSerializer(data=habit_data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['user'] = self.request.user
         return context
 
-    def list(self, request, *args, **kwargs):
+    def public_list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = HabitSerializer(queryset, many=True, context={'request': request})
+        # if request:
+        #     return Response(serializer.data)
         return Response(serializer.data)
 
     # def update(self, request, *args, **kwargs):

@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -26,7 +27,6 @@ class HabitViewSet(viewsets.ModelViewSet):
         owner = request.user
 
         habit_data = request.data
-        habit_data['owner'] = owner.id
         serializer = HabitSerializer(data=habit_data, context={'request': request})
 
         if serializer.is_valid():
@@ -53,3 +53,18 @@ class HabitViewSet(viewsets.ModelViewSet):
 
         serializer = HabitSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        owner = request.user
+
+        habit_data = request.data
+        serializer = HabitSerializer(data=habit_data, context={'request': request})
+
+        if serializer.is_valid():
+            serializer.save()
+
+            user_id = owner.tg_id
+
+            send_telegram_notification(user_id, f'Action updated: {serializer.data["action"]} in {serializer.data["location"]}')
+
+        return HttpResponse("Курс успешно обновлен")

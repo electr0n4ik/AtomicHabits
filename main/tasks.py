@@ -32,6 +32,6 @@ def send_telegram_notification(user_id, message, notify=True):
                 chat_id = i['message']['chat']['id']
                 response_send_msg = requests.post(url_send_msg, params={
                     'chat_id': chat_id,
-                    'text': f"You should do {message}! JUST DO IT!"
+                    'text': f"You should do: {message}! JUST DO IT!"
                 })
                 break

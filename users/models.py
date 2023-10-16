@@ -21,6 +21,11 @@ class User(AbstractUser):
         **NULLABLE,
         upload_to='users/avatar',
         verbose_name='аватар')
+    tg_id = models.CharField(
+        **NULLABLE,
+        unique=True,
+        verbose_name='телеграм id'
+    )
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []

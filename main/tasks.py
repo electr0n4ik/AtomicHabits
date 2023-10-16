@@ -1,38 +1,37 @@
-# import os
-#
-# from celery import shared_task
-# from django.core.mail import send_mail
-# from django.utils import timezone
-# from dotenv import load_dotenv
-# from pathlib import Path
-#
-# from users.models import User
-#
-# BASE_DIR = Path(__file__).resolve().parent.parent
-# env_path = BASE_DIR / '.env'
-# load_dotenv(dotenv_path=env_path)
-# # celery -A config worker --loglevel=info
-#
-#
-# @shared_task
-# def send_update_notification(email, course_name):
-#     subject = 'Уведомление об обновлении курса'
-#     message = f'Курс "{course_name}" был обновлен. Проверьте новый материал!'
-#     from_email = os.getenv('EMAIL_HOST_USER')
-#     recipient_list = [email]
-#
-#     send_mail(subject, message, from_email, recipient_list)
-#
-#
-# @shared_task
-# def block_inactive_users():
-#     one_month_ago = timezone.now() - timezone.timedelta(days=30)
-#
-#     # Находим пользователей, которые не заходили более месяца
-#     users_to_block = User.objects.filter(last_login__lte=one_month_ago, is_active=True)
-#
-#     # Блокируем пользователей
-#     for user in users_to_block:
-#         user.is_active = False
-#         user.save()
-#
+import json
+
+from celery import shared_task
+from dotenv import load_dotenv
+from pathlib import Path
+import requests
+from django.conf import settings
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+env_path = BASE_DIR / '.env'
+load_dotenv(dotenv_path=env_path)
+
+
+# celery -A config worker --loglevel=info
+
+
+@shared_task
+def send_telegram_notification(user_id, message, notify=True):
+
+    token_bot = settings.TELEGRAM_BOT_TOKEN
+
+    url_get_chat_id = f'https://api.telegram.org/bot{token_bot}/getUpdates'
+    url_send_msg = f'https://api.telegram.org/bot{token_bot}/sendMessage'
+
+    response_get_chat_id = requests.get(url_get_chat_id)
+
+    data_get_chat_id = response_get_chat_id.json()
+    if data_get_chat_id['ok']:
+        for i in data_get_chat_id['result']:
+
+            if i['message']['from']['username'] == user_id:
+                chat_id = i['message']['chat']['id']
+                response_send_msg = requests.post(url_send_msg, params={
+                    'chat_id': chat_id,
+                    'text': f"You should do {message}! JUST DO IT!"
+                })
+                break

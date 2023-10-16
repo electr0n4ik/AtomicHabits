@@ -1,10 +1,8 @@
-from django.utils import timezone
-from django.conf import settings
-from django.http import HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from .tasks import send_telegram_notification
 from .models import Habit
 from .paginators import MyPagination
 from .permissions import IsOwnerOrStaff
@@ -14,18 +12,29 @@ from .serializers import HabitSerializer
 class HabitViewSet(viewsets.ModelViewSet):
     """ViewSet для работы с моделью."""
     serializer_class = HabitSerializer
-    # queryset = Habit.objects.all()
     queryset = Habit.objects.order_by('id')
     pagination_class = MyPagination
     permission_classes = [IsAuthenticated, IsOwnerOrStaff]
 
+    def list(self, request):
+        user = request.user
+        habits = self.queryset.filter(owner=user)
+        serializer = self.get_serializer(habits, many=True)
+        return Response(serializer.data)
+
     def create(self, request, *args, **kwargs):
         owner = request.user
+
         habit_data = request.data
         habit_data['owner'] = owner.id
         serializer = HabitSerializer(data=habit_data, context={'request': request})
+
         if serializer.is_valid():
             serializer.save()
+
+            user_id = owner.tg_id
+
+            send_telegram_notification(user_id, f'{serializer.data["action"]} in {serializer.data["location"]}')
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -36,23 +45,11 @@ class HabitViewSet(viewsets.ModelViewSet):
 
     def public_list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        serializer = HabitSerializer(queryset, many=True, context={'request': request})
-        # if request:
-        #     return Response(serializer.data)
-        return Response(serializer.data)
+        if 'is_publish' in request.query_params:
+            is_publish = request.query_params.get('is_publish')
+            queryset = queryset.filter(is_publish=is_publish)
+        else:
+            queryset = queryset.filter(owner=request.user)
 
-    # def update(self, request, *args, **kwargs):
-    #     course_id = kwargs.get('pk')
-    #     course = Habit.objects.get(pk=course_id)
-    #
-    #     course.last_updated = timezone.now()
-    #     course.save()
-    #
-    #     users = CourseSubscription.objects.filter(subscribed=True, course=course)
-    #
-    #     for subscription in users:
-    #         user = subscription.user
-    #         email = user.email
-    #         send_update_notification.delay(email, course.title)
-    #
-    #     return HttpResponse("Курс успешно обновлен")
+        serializer = HabitSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)

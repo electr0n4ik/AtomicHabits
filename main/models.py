@@ -1,7 +1,5 @@
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.db import models
-from django.utils import timezone
 
 NULLABLE = {'blank': True, 'null': True}
 
@@ -78,27 +76,6 @@ class Habit(models.Model):
         **NULLABLE,
         verbose_name='последнее выполнение'
     )
-
-    def clean(self):
-        if self.related_habits.exists() and self.reward > 0:
-            raise ValidationError("Исключен одновременный выбор связанной привычки и указания вознаграждения")
-
-        if self.execution_time > 120:
-            raise ValidationError("Время выполнения должно быть не больше 120 секунд.")
-
-        if self.is_nice and self.related_habits.filter(is_nice=False).exists():
-            raise ValidationError("В связанные привычки могут попадать только привычки с признаком приятной привычки.")
-
-        if self.is_nice:
-            if self.reward > 0:
-                raise ValidationError("У приятной привычки не может быть награды.")
-            if self.related_habits.exists():
-                raise ValidationError("У приятной привычки не может быть связанной привычки.")
-
-        if self.last_completed:
-            time_since_last_completion = timezone.now() - self.last_completed
-            if time_since_last_completion.total_seconds() < 7 * 24 * 60 * 60:
-                raise ValidationError("Нельзя выполнять привычку реже, чем 1 раз в 7 дней.")
 
     def save(self, *args, **kwargs):
         self.full_clean()  # Вызываем валидацию перед сохранением

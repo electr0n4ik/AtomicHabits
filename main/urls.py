@@ -1,8 +1,6 @@
 from django.urls import path
-
 from main.apps import MainConfig
 from rest_framework.routers import DefaultRouter
-
 from . import views
 
 app_name = MainConfig.name
@@ -18,5 +16,8 @@ router = DefaultRouter()
 router.register(r'habit', views.HabitViewSet, basename='habit')
 
 urlpatterns = [
-                  path('habit/public_list/', views.HabitViewSet.as_view({'get': 'public_list'}), name='public_list'),
-              ] + router.urls
+                  path(
+                      'habit/public_list/',
+                      views.HabitViewSet.as_view({'get': 'public_list'}),
+                      name='public_list'
+                  )] + router.urls

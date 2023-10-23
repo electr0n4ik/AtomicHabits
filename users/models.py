@@ -5,7 +5,7 @@ NULLABLE = {'blank': True, 'null': True}
 
 
 class User(AbstractUser):
-    username = None
+    # username = None
     email = models.EmailField(
         unique=True,
         verbose_name='почта')

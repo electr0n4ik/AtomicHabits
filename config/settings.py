@@ -49,8 +49,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_celery_beat',
 
-    'users.apps.UsersConfig',
-    'main.apps.MainConfig',
+    'users',
+    'main',
 ]
 
 MIDDLEWARE = [
@@ -102,18 +102,25 @@ AUTH_USER_MODEL = "users.User"
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
+auth_pas_val = [
+    'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    'django.contrib.auth.password_validation.MinimumLengthValidator',
+    'django.contrib.auth.password_validation.CommonPasswordValidator',
+    'django.contrib.auth.password_validation.NumericPasswordValidator'
+
+]
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'NAME': auth_pas_val[0],
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'NAME': auth_pas_val[1],
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        'NAME': auth_pas_val[2],
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'NAME': auth_pas_val[3],
     },
 ]
 
@@ -148,10 +155,10 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        # 'rest_framework.permissions.IsAuthenticated',  # доступ только для авторизованных пользователей
-        'rest_framework.permissions.AllowAny',  # доступ для всех
-    ]
-
+        'rest_framework.permissions.AllowAny',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'main.pagination.MyPagination',
+    'PAGE_SIZE': 5,
 }
 
 # Настройки срока действия токенов
@@ -176,14 +183,6 @@ SECRET_KEY_STRIPE = os.getenv('SECRET_KEY_STRIPE')
 
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-
-# Настройки для Celery
-CELERY_BEAT_SCHEDULE = {
-    'send-notification': {
-        'task': 'main.tasks.send_telegram_notification',
-        'schedule': timedelta(minutes=1),  # Расписание выполнения задачи (например, каждые 1 минуту)
-    },
-}
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST')

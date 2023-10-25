@@ -30,8 +30,6 @@ class Habit(models.Model):
     TIMING_CHOICES = (
         ('daily', 'Ежедневно'),
         ('weekly', 'Раз в неделю'),
-        ('monthly', 'Раз в месяц'),
-
     )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

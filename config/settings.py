@@ -157,8 +157,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
-    'DEFAULT_PAGINATION_CLASS': 'main.pagination.MyPagination',
-    'PAGE_SIZE': 5,
+    'DEFAULT_PAGINATION_CLASS':
+        'main.pagination.MyPagination',
 }
 
 # Настройки срока действия токенов

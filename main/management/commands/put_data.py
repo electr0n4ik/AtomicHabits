@@ -19,6 +19,7 @@ class Command(BaseCommand):
         user1, _ = User.objects.get_or_create(
             email='user1@gmail.com',
             username='user1',
+            tg_id='id_psi'
         )
         user1.set_password('user1')
         user1.save()

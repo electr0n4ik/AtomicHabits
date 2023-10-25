@@ -24,13 +24,14 @@ class HabitViewSet(viewsets.ModelViewSet):
     url_send_msg = \
         f'https://api.telegram.org/bot{token_bot}/sendMessage'
 
-    def list(self, request):
+    def list(self, request, *args, **kwargs):
 
         self.permission_classes = [IsOwner]
         user = request.user
         habits = self.queryset.filter(owner=user)
-        serializer = self.get_serializer(habits, many=True)
-        return Response(serializer.data)
+        page = self.paginate_queryset(habits)
+        serializer = HabitSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
 
     def create(self, request, *args, **kwargs):
 
@@ -48,10 +49,16 @@ class HabitViewSet(viewsets.ModelViewSet):
                        f'{serializer.data["location"]}')
 
             # Создаем интервал для повтора задачи
-            interval_data = {
-                'every': 10,  # Интервал в секундах
-                'period': IntervalSchedule.SECONDS,
-            }
+            if serializer.data['timing'] == 'weekly':
+                interval_data = {
+                    'weekly': 24 * 7 * 3600,  # Интервал в секундах
+                    'period': IntervalSchedule.SECONDS,
+                }
+            else:
+                interval_data = {
+                    'every': 24 * 3600,  # Интервал в секундах
+                    'period': IntervalSchedule.SECONDS,
+                }
 
             schedule, _ = IntervalSchedule.objects.get_or_create(
                 **interval_data)
@@ -75,15 +82,13 @@ class HabitViewSet(viewsets.ModelViewSet):
                         # Создаем задачу для повторения
                         task = PeriodicTask.objects.create(
                             interval=schedule,
-                            name=f'{user_id}_habit_task1',
+                            name=f'{user_id}_{habit_data["action"]}',
                             task=f'main.tasks.send_tg_not_{user_id}',
                             args=json.dumps([arg1, arg2])
                         )
 
                         task.save()
 
-                        # Вызываем функцию send_tg_not для отправки уведомления
-                        # send_tg_not(user_id, message)
                         return Response(serializer.data,
                                         status=status.HTTP_201_CREATED)
 
@@ -96,68 +101,67 @@ class HabitViewSet(viewsets.ModelViewSet):
 
     def public_list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        is_publish = request.query_params.get('is_publish', None)
-        if is_publish is not None:
-            is_publish = is_publish.lower() == 'true'
-            queryset = queryset.filter(is_publish=is_publish)
 
-        serializer = HabitSerializer(queryset, many=True,
-                                     context={'request': request})
-        return Response(serializer.data)
+        queryset = queryset.filter(is_publish=True)
+        page = self.paginate_queryset(queryset)
 
-    def update(self, request, *args, **kwargs):
+        serializer = HabitSerializer(page, many=True)
 
-        self.permission_classes = [IsOwner]
-        owner = request.user
-        habit_data = request.data
-        serializer = HabitSerializer(
-            data=habit_data,
-            context={'request': request}
-        )
+        return self.get_paginated_response(serializer.data)
 
-        if serializer.is_valid():
-            serializer.save()
-            user_id = owner.tg_id
-            message = (f'{serializer.data["action"]} in '
-                       f'{serializer.data["location"]}')
 
-            # Создаем интервал для повтора задачи
-            interval_data = {
-                'every': 10,  # Интервал в секундах
-                'period': IntervalSchedule.SECONDS,
-            }
+def update(self, request, *args, **kwargs):
+    self.permission_classes = [IsOwner]
+    owner = request.user
+    habit_data = request.data
+    serializer = HabitSerializer(
+        data=habit_data,
+        context={'request': request}
+    )
 
-            schedule, _ = IntervalSchedule.objects.get_or_create(
-                **interval_data)
+    if serializer.is_valid():
+        serializer.save()
+        user_id = owner.tg_id
+        message = (f'{serializer.data["action"]} in '
+                   f'{serializer.data["location"]}')
 
-            arg1 = user_id
-            arg2 = f'{habit_data["action"]} in {habit_data["location"]}'
+        # Создаем интервал для повтора задачи
+        interval_data = {
+            'every': 10,  # Интервал в секундах
+            'period': IntervalSchedule.SECONDS,
+        }
 
-            response_get_chat_id = requests.get(self.url_get_chat_id)
+        schedule, _ = IntervalSchedule.objects.get_or_create(
+            **interval_data)
 
-            data_get_chat_id = response_get_chat_id.json()
+        arg1 = user_id
+        arg2 = f'{habit_data["action"]} in {habit_data["location"]}'
 
-            if data_get_chat_id['ok']:
-                for i in data_get_chat_id['result']:
-                    if i['message']['from']['username'] == user_id:
-                        chat_id = i['message']['chat']['id']
-                        requests.post(self.url_send_msg, params={
-                            'chat_id': chat_id,
-                            'text': f"You should do: {message}! JUST DO IT!"
-                        })
+        response_get_chat_id = requests.get(self.url_get_chat_id)
 
-                        # Создаем задачу для повторения
-                        task = PeriodicTask.objects.create(
-                            interval=schedule,
-                            name=f'{user_id}_habit_task1',
-                            task=f'main.tasks.send_tg_not_{user_id}',
-                            args=json.dumps([arg1, arg2])
-                        )
+        data_get_chat_id = response_get_chat_id.json()
 
-                        task.save()
+        if data_get_chat_id['ok']:
+            for i in data_get_chat_id['result']:
+                if i['message']['from']['username'] == user_id:
+                    chat_id = i['message']['chat']['id']
+                    requests.post(self.url_send_msg, params={
+                        'chat_id': chat_id,
+                        'text': f"You should do: {message}! JUST DO IT!"
+                    })
 
-                        # Вызываем функцию send_tg_not для отправки уведомления
-                        # send_tg_not(user_id, message)
-                        return HttpResponse("Курс успешно обновлен")
+                    # Создаем задачу для повторения
+                    task = PeriodicTask.objects.create(
+                        interval=schedule,
+                        name=f'{user_id}_habit_task1',
+                        task=f'main.tasks.send_tg_not_{user_id}',
+                        args=json.dumps([arg1, arg2])
+                    )
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                    task.save()
+
+                    # Вызываем функцию send_tg_not для отправки уведомления
+                    # send_tg_not(user_id, message)
+                    return HttpResponse("Курс успешно обновлен")
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

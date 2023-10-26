@@ -41,3 +41,14 @@ services:
     command: celery -A config beat -l INFO #  --loglevel=INFO
     depends_on:
       - redis
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - app
+#    networks:
+#      - mynetwork

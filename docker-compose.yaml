@@ -35,7 +35,6 @@ services:
       - DJANGO_SETTINGS_MODULE=config.settings
       - CELERY_BROKER_URL=redis://redis:6379/0
 
-
   celery-beat:
     build: .
     command: celery -A config beat -l INFO #  --loglevel=INFO

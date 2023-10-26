@@ -147,3 +147,5 @@ pip install flake8
 ```shell
 flake8 --exclude=venv,External\ Libraries,Scratches,Consoles,migrations
 ```
+
+

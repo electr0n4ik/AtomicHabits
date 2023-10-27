@@ -8,21 +8,35 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - db
-      - redis
-      - celery
-      - celery-beat
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      celery:
+        condition: service_healthy
+      celery-beat:
+        condition: service_healthy
 
   db:
     image: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_DB: postgres
-      POSTGRES_PASSWORD: 12345
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
 
   redis:
     image: redis:latest
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     ports:
       - "6379:6379"
 
@@ -30,24 +44,15 @@ services:
     build: .
     command: celery -A config worker -l INFO
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings
       - CELERY_BROKER_URL=redis://redis:6379/0
 
   celery-beat:
     build: .
-    command: celery -A config beat -l INFO #  --loglevel=INFO
+    command: celery -A config beat -l INFO
     depends_on:
-      - redis
-
-#  nginx:
-#    image: nginx:latest
-#    ports:
-#      - "80:80"
-#    volumes:
-#      - .src:/usr/share/nginx/html
-#    depends_on:
-#      - app
-#    networks:
-#      - mynetwork
+      redis:
+        condition: service_healthy
